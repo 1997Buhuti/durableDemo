@@ -2,6 +2,7 @@
 org: manakal
 # "service" is the name of this project. This will also be added to your AWS resource names.
 service: durableDemo
+useDotenv: true
 
 provider:
   name: aws
@@ -11,9 +12,16 @@ provider:
   # domain: api.example.com
 
 functions:
-  hello:
+  greet:
     handler: handler.hello
     events:
       - httpApi:
-          path: /
+          path: /greet
           method: get
+  anotherGreet:
+    handler: anotherGreet.anotherGreet
+    events:
+      -  httpApi:
+           path: /greet
+           method: post
+      
