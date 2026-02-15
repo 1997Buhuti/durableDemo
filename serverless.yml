@@ -12,16 +12,13 @@ provider:
   # domain: api.example.com
 
 functions:
-  greet:
-    handler: handler.hello
+  orderProcessing:
+    handler: handler.main
+    timeout: 900 # 15 minutes, allowing for long execution with checkpointing
     events:
       - httpApi:
-          path: /greet
-          method: get
-  anotherGreet:
-    handler: anotherGreet.anotherGreet
-    events:
-      -  httpApi:
-           path: /greet
-           method: post
-      
+          path: /order
+          method: post
+
+plugins:
+  - serverless-plugin-typescript

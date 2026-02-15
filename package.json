@@ -1,0 +1,21 @@
+{
+  "name": "durable-demo",
+  "version": "1.0.0",
+  "description": "Serverless Step Functions Demo",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.160",
+    "@types/node": "^20.0.0",
+    "serverless-plugin-typescript": "^2.1.0",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.990.0",
+    "@aws/durable-execution-sdk-js": "^1.0.2",
+    "aws-lambda": "^1.0.7"
+  }
+}
