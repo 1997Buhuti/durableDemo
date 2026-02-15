@@ -14,11 +14,9 @@ provider:
 functions:
   orderProcessing:
     handler: handler.main
-    timeout: 900 # 15 minutes, allowing for long execution with checkpointing
+    timeout: 30
     events:
       - httpApi:
           path: /order
           method: post
 
-plugins:
-  - serverless-plugin-typescript
