@@ -6,12 +6,22 @@ useDotenv: true
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x  # Durable execution SDK requires Node.js >= 22
   # Uncomment to easily set up a custom domain. Read the docs for more details:
   # https://www.serverless.com/framework/docs/providers/aws/guide/domains
   # domain: api.example.com
 
 functions:
+  # Simple demo function
+  simpleDemo:
+    handler: simple-handler.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /simple
+          method: post
+  
+  # Original order processing function
   orderProcessing:
     handler: handler.main
     timeout: 30

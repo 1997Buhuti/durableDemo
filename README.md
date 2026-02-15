@@ -1,69 +1,131 @@
-<!--
-title: 'AWS Simple HTTP Endpoint example in NodeJS'
-description: 'This template demonstrates how to make a simple HTTP API with Node.js running on AWS Lambda and API Gateway using the Serverless Framework.'
-layout: Doc
-framework: v4
-platform: AWS
-language: nodeJS
-authorLink: 'https://github.com/serverless'
-authorName: 'Serverless, Inc.'
-authorAvatar: 'https://avatars1.githubusercontent.com/u/13742415?s=200&v=4'
--->
+# AWS Lambda Durable Functions Demo
 
-# Serverless Framework Node HTTP API on AWS
+This project demonstrates AWS Lambda Durable Functions using the `@aws/durable-execution-sdk-js`.
 
-This template demonstrates how to make a simple HTTP API with Node.js running on AWS Lambda and API Gateway using the Serverless Framework.
+## Prerequisites
 
-This template does not include any kind of persistence (database). For more advanced examples, check out the [serverless/examples repository](https://github.com/serverless/examples/) which includes Typescript, Mongo, DynamoDB and other examples.
+- **Node.js >= 22** (required by the durable execution SDK)
+- AWS account with appropriate permissions
+- Serverless Framework
 
-## Usage
+## Project Structure
 
-### Deployment
+- `simple-handler.ts` / `simple-workflow.ts` - **Start here!** Basic example demonstrating steps and wait operations
+- `handler.ts` / `workflow.ts` - Advanced example with callbacks and high-value order approval
+- `approve.ts` - Utility to complete callback operations
 
-In order to deploy the example, you need to run the following command:
+## Quick Start
 
+### 1. Install Dependencies
+
+```bash
+npm install
 ```
+
+### 2. Deploy to AWS
+
+```bash
 serverless deploy
 ```
 
-After running deploy, you should see output similar to:
+### 3. Test the Simple Workflow
 
+```bash
+# Using AWS CLI
+aws lambda invoke \
+  --function-name durableDemo-dev-simpleDemo:$LATEST \
+  --invocation-type Event \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"taskName": "demo-task", "userId": "user-123"}' \
+  response.json
+
+# Or test via HTTP endpoint (get URL from deploy output)
+curl -X POST https://YOUR_API_URL/simple \
+  -H "Content-Type: application/json" \
+  -d '{"taskName": "demo-task", "userId": "user-123"}'
 ```
-Deploying "serverless-http-api" to stage "dev" (us-east-1)
 
-✔ Service deployed to stack serverless-http-api-dev (91s)
+### 4. Test the Order Processing Workflow
 
-endpoint: GET - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/
-functions:
-  hello: serverless-http-api-dev-hello (1.6 kB)
+```bash
+# Low value order (no approval needed)
+aws lambda invoke \
+  --function-name durableDemo-dev-orderProcessing:$LATEST \
+  --invocation-type Event \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"orderId": "order-123", "amount": 500, "customerId": "customer-456"}' \
+  response.json
+
+# High value order (requires approval)
+aws lambda invoke \
+  --function-name durableDemo-dev-orderProcessing:$LATEST \
+  --invocation-type Event \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"orderId": "order-999", "amount": 1500, "customerId": "vip-user"}' \
+  response.json
+
+# To approve the high-value order, use the callback ID from logs:
+npx ts-node approve.ts <callback-id-from-logs>
 ```
 
-_Note_: In current form, after deployment, your API is public and can be invoked by anyone. For production deployments, you might want to configure an authorizer. For details on how to do that, refer to [HTTP API (API Gateway V2) event docs](https://www.serverless.com/framework/docs/providers/aws/events/http-api).
+## Key Concepts
+
+### 1. Steps (`context.step()`)
+- Automatically checkpointed
+- Will not re-execute on replay if already completed
+- Perfect for API calls, database operations, etc.
+
+### 2. Wait (`context.wait()`)
+- Suspends execution without consuming compute resources
+- No charges during the wait period
+- Useful for delays, polling intervals, etc.
+
+### 3. Callbacks (`context.createCallback()`)
+- Enables human-in-the-loop workflows
+- Function suspends until external system completes the callback
+- Great for approvals, webhooks, etc.
+
+## Important Notes
+
+### Runtime Requirements
+- **Must use Node.js 22+** (`nodejs22.x` in Lambda)
+- The SDK will not work with older Node.js versions
 
 ### Invocation
+- Must use **qualified ARN** (with version or alias like `:$LATEST`)
+- Use **Event invocation type** for long-running executions
+- For production, use numbered versions instead of `$LATEST`
 
-After successful deployment, you can call the created application via HTTP:
+### Determinism
+- Code must be deterministic (same inputs = same durable operation order)
+- Don't use `Date.now()`, `Math.random()`, etc. outside of steps
+- All non-deterministic operations should be inside `context.step()`
 
+## Monitoring
+
+Check CloudWatch Logs for execution details:
+
+```bash
+# View logs for simple demo
+serverless logs -f simpleDemo --tail
+
+# View logs for order processing
+serverless logs -f orderProcessing --tail
 ```
-curl https://xxxxxxx.execute-api.us-east-1.amazonaws.com/
-```
 
-Which should result in response similar to:
+## Troubleshooting
 
-```json
-{ "message": "Go Serverless v4! Your function executed successfully!" }
-```
+### "Cannot read properties of undefined (reading 'SUCCEEDED')"
+- **Cause**: Wrong Node.js runtime version
+- **Fix**: Update `serverless.yml` to use `nodejs22.x`
 
-### Local development
+### Function times out
+- Increase timeout in `serverless.yml`
+- Check CloudWatch Logs for errors
+- Verify the function has proper IAM permissions
 
-The easiest way to develop and test your function is to use the `dev` command:
+## Learn More
 
-```
-serverless dev
-```
-
-This will start a local emulator of AWS Lambda and tunnel your requests to and from AWS Lambda, allowing you to interact with your function as if it were running in the cloud.
-
-Now you can invoke the function as before, but this time the function will be executed locally. Now you can develop your function locally, invoke it, and see the results immediately without having to re-deploy.
-
-When you are done developing, don't forget to run `serverless deploy` to deploy the function to the cloud.
+- [AWS Lambda Durable Functions Documentation](https://docs.aws.amazon.com/lambda/latest/dg/durable-functions.html)
+- [SDK GitHub Repository](https://github.com/aws/aws-durable-execution-sdk-js)
+- [SDK API Reference](https://github.com/aws/aws-durable-execution-sdk-js/tree/main/docs/api-reference)
