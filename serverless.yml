@@ -7,26 +7,64 @@ useDotenv: true
 provider:
   name: aws
   runtime: nodejs22.x  # Durable execution SDK requires Node.js >= 22
+  iam:
+    role:
+      statements:
+        # Required permissions for durable execution
+        - Effect: Allow
+          Action:
+            - lambda:CheckpointDurableExecution
+            - lambda:GetDurableExecutionState
+            - lambda:SendDurableExecutionCallbackSuccess
+            - lambda:SendDurableExecutionCallbackFailure
+          Resource: '*'
+        # Allow Lambda functions to invoke other Lambda functions
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: '*'
   # Uncomment to easily set up a custom domain. Read the docs for more details:
   # https://www.serverless.com/framework/docs/providers/aws/guide/domains
   # domain: api.example.com
 
 functions:
-  # Simple demo function
+  # Simple demo function (durable)
   simpleDemo:
-    handler: simple-handler.handler
+    handler: simpleWorkFlow/simple-handler.handler
     timeout: 30
-    events:
-      - httpApi:
-          path: /simple
-          method: post
+    durableConfig:
+      executionTimeout: 600 # Maximum execution time in seconds (10 minutes for testing)
+      retentionPeriodInDays: 7 # How long to retain execution history
   
-  # Original order processing function
+  # Original order processing function (durable)
   orderProcessing:
     handler: handler.main
+    timeout: 30
+    durableConfig:
+      executionTimeout: 600
+      retentionPeriodInDays: 7
+
+  
+  # Order processing with notifications (durable)
+  orderProcessingWithNotification:
+    handler: handler-notification.main
+    timeout: 30
+    durableConfig:
+      executionTimeout: 3600 # 1 hour for approval workflows
+      retentionPeriodInDays: 14
+    environment:
+      # Uncomment and set if using SNS notifications
+      # APPROVAL_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:123456789012:approvals
+      # APPROVAL_BASE_URL: https://your-approval-ui.com
+  
+  # HTTP wrapper for testing (non-durable, invokes durable function)
+  orderApiGateway:
+    handler: api-wrapper.handler
     timeout: 30
     events:
       - httpApi:
           path: /order
           method: post
+    environment:
+      DURABLE_FUNCTION_NAME: ${self:service}-${sls:stage}-simpleDemo
 

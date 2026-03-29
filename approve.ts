@@ -1,7 +1,7 @@
-
-
-import { DurableExecutionClient } from '@aws/durable-execution-sdk-js';
-
+import {
+  LambdaClient,
+  SendDurableExecutionCallbackSuccessCommand,
+} from "@aws-sdk/client-lambda";
 
 // Usage: npx ts-node approve.ts <callbackId>
 const run = async () => {
@@ -14,20 +14,23 @@ const run = async () => {
 
   console.log(`Approving callback: ${callbackId}...`);
 
-  // Initialize the client (uses default AWS credentials)
-  const client = new DurableExecutionClient({
-    region: process.env.AWS_REGION || 'us-east-1' // Adjust region if needed
+  // Initialize the Lambda client (uses default AWS credentials)
+  const client = new LambdaClient({
+    region: process.env.AWS_REGION || "us-east-1", // Adjust region if needed
   });
 
   try {
     // Send the "Approved" signal
-    await client.sendCallbackSuccess({
-      callbackId,
-      output: { approved: true } // Matches the expected type in workflow.ts
+    const command = new SendDurableExecutionCallbackSuccessCommand({
+      CallbackId: callbackId,
+      Result: JSON.stringify({ approved: true }), // Matches the expected type in workflow.ts
     });
+
+    await client.send(command);
     console.log("Successfully approved!");
   } catch (error) {
     console.error("Failed to approve:", error);
+    process.exit(1);
   }
 };
 
